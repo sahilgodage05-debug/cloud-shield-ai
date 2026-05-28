@@ -11,7 +11,6 @@ import {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function App() {
-  const [clientId, setClientId] = useState('client_a');
   const [stats, setStats] = useState({ total_requests: 0, status_codes: {}, ips: {}, edge_rules: [] });
   const [security, setSecurity] = useState({ suspicious_ips: {} });
   const [healing, setHealing] = useState({ health_status: "Healthy", consecutive_crashes: 0, auto_scaling_triggered: false, instances: [] });
@@ -22,15 +21,15 @@ export default function App() {
     setIsRefreshing(true);
     try {
       // Fetch General Stats
-      const statsRes = await fetch(`http://localhost:8000/api/stats?client_id=${clientId}`);
+      const statsRes = await fetch('http://127.0.0.1:8000/api/stats');
       const statsData = await statsRes.json();
       
       // Fetch Security Audit
-      const securityRes = await fetch(`http://localhost:8000/api/security?client_id=${clientId}`);
+      const securityRes = await fetch('http://127.0.0.1:8000/api/security');
       const securityData = await securityRes.json();
 
       // Fetch Self-Healing info
-      const healingRes = await fetch(`http://localhost:8000/api/healing?client_id=${clientId}`);
+      const healingRes = await fetch('http://127.0.0.1:8000/api/healing');
       const healingData = await healingRes.json();
       
       if (!statsData.error && !securityData.error && !healingData.error) {
@@ -51,10 +50,10 @@ export default function App() {
 
   useEffect(() => {
     fetchData();
-    // Poll APIs every 3 seconds for real-time updates (restarts on clientId change)
+    // Poll APIs every 3 seconds for real-time updates
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, [clientId]);
+  }, []);
 
   // Format Status Codes data for BarChart
   const statusChartData = Object.entries(stats.status_codes).map(([code, count]) => ({
@@ -85,16 +84,6 @@ export default function App() {
         </div>
         
         <div className="header-right">
-          {/* Multi-Tenancy Selector Dropdown */}
-          <select 
-            value={clientId} 
-            onChange={(e) => setClientId(e.target.value)} 
-            className="client-select"
-          >
-            <option value="client_a">Client A (Company A)</option>
-            <option value="client_b">Client B (Company B)</option>
-          </select>
-
           <div className={`status-badge ${isConnected ? 'online' : 'offline'}`}>
             <span className="pulse-dot"></span>
             {isConnected ? 'Backend Connected' : 'Backend Disconnected'}

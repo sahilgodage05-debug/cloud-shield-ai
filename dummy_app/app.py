@@ -18,32 +18,29 @@ def trigger_action(action: dict):
     """Triggers specific types of mock logs and posts them to backend server"""
     action_type = action.get("type")
     ip = action.get("ip", "192.168.1.100")
-    client_id = action.get("client_id", "client_a")
     timestamp = time.strftime("%d/%b/%Y:%H:%M:%S")
     
     if action_type == "normal":
-        log_line = f'[{client_id}] {ip} - - [{timestamp}] "GET /index.html" 200 5120'
+        log_line = f'{ip} - - [{timestamp}] "GET /index.html" 200 5120'
     elif action_type == "login_fail":
-        log_line = f'[{client_id}] {ip} - - [{timestamp}] "POST /login" 401 256'
+        log_line = f'{ip} - - [{timestamp}] "POST /login" 401 256'
     elif action_type == "error_500":
-        log_line = f'[{client_id}] {ip} - - [{timestamp}] "GET /checkout" 500 0'
+        log_line = f'{ip} - - [{timestamp}] "GET /checkout" 500 0'
     elif action_type == "download_10mb":
-        log_line = f'[{client_id}] {ip} - - [{timestamp}] "GET /downloads/file-10mb.zip" 200 10485760'
+        log_line = f'{ip} - - [{timestamp}] "GET /downloads/file-10mb.zip" 200 10485760'
     elif action_type == "download_20mb":
-        log_line = f'[{client_id}] {ip} - - [{timestamp}] "GET /downloads/file-20mb.zip" 200 20971520'
+        log_line = f'{ip} - - [{timestamp}] "GET /downloads/file-20mb.zip" 200 20971520'
     elif action_type == "download_100mb":
-        log_line = f'[{client_id}] {ip} - - [{timestamp}] "GET /downloads/file-100mb.zip" 200 104857600'
+        log_line = f'{ip} - - [{timestamp}] "GET /downloads/file-100mb.zip" 200 104857600'
     else:
         return {"error": f"Unknown action type: {action_type}"}
-
-
         
     # Send log line to Backend S3 synced log database
     try:
-        res = requests.post("http://localhost:8000/api/log", json={"log_line": log_line})
+        res = requests.post("http://127.0.0.1:8000/api/log", json={"log_line": log_line})
         return res.json()
     except Exception as e:
         return {"status": "error", "message": f"Could not sync log to backend API: {str(e)}"}
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=5000, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)
