@@ -34,6 +34,9 @@ def setup_mock_s3():
 
 def generate_edge_rules(df_client):
     """Generates edge caching recommendations in edge_rules.json and returns them"""
+    if df_client.empty:
+        return []
+        
     # Count URL frequencies
     url_counts = df_client['URL'].value_counts()
     suggestions = []
@@ -41,14 +44,28 @@ def generate_edge_rules(df_client):
     for url, count in url_counts.items():
         # If static asset or file is hit multiple times, recommend caching
         if count >= 3:
-            # Estimate savings ($0.05 per egress hit saved)
-            savings = count * 0.05
+            # Filter for this URL to calculate average bytes
+            url_data = df_client[df_client['URL'] == url]
+            avg_bytes = url_data['Bytes'].mean() if 'Bytes' in url_data.columns else 1024
+            
+            # Bandwidth saved in bytes: (hits - 1) * file_size
+            bytes_saved = (count - 1) * avg_bytes
+            mb_saved = bytes_saved / (1024 * 1024)
+            gb_saved = bytes_saved / (1024 * 1024 * 1024)
+            
+            # AWS Egress savings ($0.08 per GB) + Server compute overhead saved ($0.05 per hit)
+            bandwidth_savings = gb_saved * 0.08
+            compute_savings = (count - 1) * 0.05
+            total_savings = bandwidth_savings + compute_savings
+            
             suggestions.append({
                 "url_path": url,
                 "hits": int(count),
                 "recommended_ttl": 3600,
                 "caching_status": "Recommended",
-                "estimated_savings": round(savings, 2)
+                "avg_bytes": int(avg_bytes),
+                "mb_saved": round(mb_saved, 2),
+                "estimated_savings": round(total_savings, 2)
             })
             
     # Write to local edge_rules.json
@@ -70,8 +87,8 @@ class LogAnalyzer:
 
     def parse_logs(self):   
         """Used for reading data from S3 and identify patterns with the help of regex"""
-        # IP, Timestamp, URL, Status, and optional Bytes format
-        log_pattern = r'(\d+\.\d+\.\d+\.\d+).*?\[(.*?)\].*?"\w+ (.*?)" (\d+)(?: (\d+))?'
+        # IP, Timestamp, URL, Status, Bytes, optional CPU, and optional Latency
+        log_pattern = r'(\d+\.\d+\.\d+\.\d+).*?\[(.*?)\].*?"\w+ (.*?)" (\d+)(?: (\d+))?(?:\s+\[CPU:(\d+)%\])?(?:\s+\[LATENCY:(\d+)ms\])?'
 
         # Retrieve log object from mock S3
         response = self.s3_client.get_object(Bucket=self.bucket_name, Key=self.log_key)
@@ -90,7 +107,9 @@ class LogAnalyzer:
                     "Timestamp": match.group(2),
                     "URL": match.group(3),
                     "Status": int(match.group(4)),
-                    "Bytes": int(match.group(5)) if match.group(5) else 1024
+                    "Bytes": int(match.group(5)) if match.group(5) else 1024,
+                    "CPU": int(match.group(6)) if match.group(6) else 35,       # default CPU 35%
+                    "Latency": int(match.group(7)) if match.group(7) else 45    # default Latency 45ms
                 })
 
         # convert Data to Pandas table
@@ -136,51 +155,112 @@ class LogAnalyzer:
 
     def evaluate_self_healing(self):
         """Scans logs for consecutive 500 server crashes and triggers virtual EC2 auto-scaling"""
-        global scaled_instances, auto_scaling_triggered
+        global auto_scaling_triggered, scaled_instances
         
-        if self.df.empty:
-            return "Healthy", 0
-            
-        consecutive_failures = 0
-        max_consecutive = 0
-        
-        for status in self.df['Status']:
-            if status == 500:
-                consecutive_failures += 1
-                if consecutive_failures > max_consecutive:
-                    max_consecutive = consecutive_failures
-            else:
-                consecutive_failures = 0
+        # Determine the current consecutive failures from the end of the log stream
+        current_consecutive_failures = 0
+        if not self.df.empty:
+            for status in reversed(self.df['Status'].tolist()):
+                if status == 500:
+                    current_consecutive_failures += 1
+                else:
+                    break
 
-        # If server crashed consecutively >= 5 times and scaling hasn't been triggered yet
-        if max_consecutive >= 5:
+        # Extract latest CPU and Latency metrics
+        latest_cpu = 35
+        latest_latency = 45
+        if not self.df.empty:
+            if 'CPU' in self.df.columns and not self.df['CPU'].empty:
+                latest_cpu = int(self.df['CPU'].iloc[-1])
+            if 'Latency' in self.df.columns and not self.df['Latency'].empty:
+                latest_latency = int(self.df['Latency'].iloc[-1])
+
+        # Define both servers
+        server_1 = {
+            "instance_id": "i-01primaryec2",
+            "name": "Primary Server (Server 1)",
+            "type": "t2.micro",
+            "status": "Running",
+            "role": "Primary",
+            "time": "09:00:00"
+        }
+        server_2 = {
+            "instance_id": "i-02backup-ec2",
+            "name": "Backup Server (Server 2)",
+            "type": "t2.micro",
+            "status": "Stopped",
+            "role": "Backup",
+            "time": "N/A"
+        }
+
+        # Initialize status variables
+        system_mode = "Stable"
+        crash_probability = 0.0
+        health_status = "Healthy"
+
+        # Case 1: Hard crash (reactive recovery)
+        if current_consecutive_failures >= 5:
+            server_1["status"] = "Crashed"
+            server_2["status"] = "Running"
+            system_mode = "Reactive Recovery"
+            crash_probability = 100.0
+            health_status = "Crashed (Auto-Scaling Active)"
+            
             if not auto_scaling_triggered:
-                print(f"[!] Critical crashes detected ({max_consecutive} failures). Triggering Auto-scaling...")
+                print(f"[!] Critical crashes detected ({current_consecutive_failures} failures). Triggering Auto-scaling...")
                 try:
                     ec2_client = boto3.client('ec2', region_name='us-east-1')
                     response = ec2_client.run_instances(
-                        ImageId='ami-0c55b159cbfafe1f0', # Mock AMI
+                        ImageId='ami-0c55b159cbfafe1f0',
                         MinCount=1,
                         MaxCount=1,
                         InstanceType='t2.micro'
                     )
-                    instance_id = response['Instances'][0]['InstanceId']
-                    scaled_instances.append({
-                        "instance_id": instance_id,
-                        "status": "Running",
-                        "type": "t2.micro",
-                        "time": time.strftime("%H:%M:%S")
-                    })
-                    auto_scaling_triggered = True
+                    server_2["instance_id"] = response['Instances'][0]['InstanceId']
                 except Exception as e:
                     print(f"[ERROR] Failed to launch recovery EC2 instance: {e}")
-            return "Crashed (Auto-Scaling Active)", max_consecutive
+                auto_scaling_triggered = True
+            server_2["time"] = time.strftime("%H:%M:%S")
+
+        # Case 2: Pre-emptive Load Warning (predictive healing)
+        elif latest_cpu >= 85 and latest_latency >= 300:
+            server_1["status"] = "Warning"
+            server_2["status"] = "Running"
+            system_mode = "Predictive Warning"
+            
+            # Estimate crash probability: base 50% + CPU factor + Latency factor
+            calculated_prob = 50.0 + (latest_cpu - 80) * 2.5 + (latest_latency - 300) * 0.08
+            crash_probability = round(min(98.0, calculated_prob), 1)
+            health_status = "Warning: High Crash Risk"
+            
+            if not auto_scaling_triggered:
+                print(f"[AI SHIELD] Pre-emptive anomaly detected (CPU: {latest_cpu}%, Latency: {latest_latency}ms). Launching backup server...")
+                try:
+                    ec2_client = boto3.client('ec2', region_name='us-east-1')
+                    response = ec2_client.run_instances(
+                        ImageId='ami-0c55b159cbfafe1f0',
+                        MinCount=1,
+                        MaxCount=1,
+                        InstanceType='t2.micro'
+                    )
+                    server_2["instance_id"] = response['Instances'][0]['InstanceId']
+                except Exception as e:
+                    print(f"[ERROR] Failed to launch pre-emptive EC2 instance: {e}")
+                auto_scaling_triggered = True
+            server_2["time"] = time.strftime("%H:%M:%S")
+
+        # Case 3: Healthy/Stable state
         else:
-            # If server recovered (normal status codes appeared at the end of logs)
-            if auto_scaling_triggered and max_consecutive == 0:
-                print("[+] Server has stabilized. Resetting auto-scaler.")
-                auto_scaling_triggered = False
-            return "Healthy", max_consecutive
+            server_1["status"] = "Running"
+            server_2["status"] = "Stopped"
+            server_2["time"] = "N/A"
+            health_status = "Healthy"
+            system_mode = "Stable"
+            crash_probability = round(min(45.0, (latest_cpu * 0.3) + (latest_latency * 0.1)), 1)
+            auto_scaling_triggered = False
+
+        scaled_instances = [server_1, server_2]
+        return health_status, current_consecutive_failures, system_mode, crash_probability, latest_cpu, latest_latency
 
 # Lifespan Context Manager to handle S3 Mock setup & teardown
 @asynccontextmanager
@@ -224,7 +304,11 @@ def get_stats():
                 "total_requests": 0, 
                 "status_codes": {}, 
                 "ips": {},
-                "edge_rules": []
+                "edge_rules": [],
+                "total_bandwidth_saved_mb": 0.0,
+                "bandwidth_savings_usd": 0.0,
+                "compute_savings_usd": 8.64,
+                "total_savings_usd": 8.64
             }
             
         total_requests = len(analyzer.df)
@@ -238,11 +322,21 @@ def get_stats():
         # Generate FinOps caching rules suggestions
         edge_rules = generate_edge_rules(analyzer.df)
         
+        # Sum up savings from edge rules
+        total_bandwidth_saved_mb = sum(r.get('mb_saved', 0.0) for r in edge_rules)
+        bandwidth_savings_usd = sum(r.get('estimated_savings', 0.0) for r in edge_rules)
+        compute_savings_usd = 8.64  # Cost saved per month by keeping Server 2 Stopped when healthy
+        total_savings_usd = bandwidth_savings_usd + compute_savings_usd
+        
         return {
             "total_requests": total_requests,
             "status_codes": status_counts_str,
             "ips": ip_counts_str,
-            "edge_rules": edge_rules
+            "edge_rules": edge_rules,
+            "total_bandwidth_saved_mb": round(total_bandwidth_saved_mb, 2),
+            "bandwidth_savings_usd": round(bandwidth_savings_usd, 2),
+            "compute_savings_usd": compute_savings_usd,
+            "total_savings_usd": round(total_savings_usd, 2)
         }
     except Exception as e:
         return {"error": str(e)}
@@ -270,13 +364,17 @@ def get_self_healing_status():
         analyzer = LogAnalyzer(BUCKET_NAME, LOG_KEY)
         analyzer.parse_logs()
         
-        health_status, consecutive_crashes = analyzer.evaluate_self_healing()
+        health_status, consecutive_crashes, system_mode, crash_probability, cpu_utilization, latency_ms = analyzer.evaluate_self_healing()
         
         return {
             "health_status": health_status,
             "consecutive_crashes": consecutive_crashes,
             "auto_scaling_triggered": auto_scaling_triggered,
-            "instances": scaled_instances
+            "instances": scaled_instances,
+            "system_mode": system_mode,
+            "crash_probability": crash_probability,
+            "cpu_utilization": cpu_utilization,
+            "latency_ms": latency_ms
         }
     except Exception as e:
         return {"error": str(e)}
@@ -286,8 +384,17 @@ def add_log(payload: dict):
     """Appends new log line from dummy app to local server.log and re-uploads to mock S3"""
     try:
         log_line = payload.get("log_line")
-        if not log_line:
-            return {"error": "log_line is required"}
+        ip = payload.get("ip")
+        if not log_line or not ip:
+            return {"error": "log_line and ip are required"}
+            
+        # Check if IP is already blocked before parsing new log
+        analyzer = LogAnalyzer(BUCKET_NAME, LOG_KEY)
+        analyzer.parse_logs()
+        suspicious = analyzer.security_audit()
+        
+        if ip in suspicious.index:
+            return {"status": "blocked", "message": "Access Denied: Your IP is blacklisted!"}
             
         # Append to server.log locally
         with open("server.log", "a") as f:
@@ -297,9 +404,16 @@ def add_log(payload: dict):
         s3_client = boto3.client('s3', region_name='us-east-1')
         s3_client.upload_file('server.log', BUCKET_NAME, LOG_KEY)
         
+        # Re-evaluate to check if this log triggered the block threshold
+        analyzer.parse_logs()
+        new_suspicious = analyzer.security_audit()
+        if ip in new_suspicious.index:
+            return {"status": "blocked", "message": "Access Denied: Your IP is now blacklisted!"}
+            
         return {"status": "success", "message": "Log synced to virtual S3"}
     except Exception as e:
         return {"error": str(e)}
+
 
 if __name__ == "__main__":
     import uvicorn

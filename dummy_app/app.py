@@ -32,15 +32,20 @@ def trigger_action(action: dict):
         log_line = f'{ip} - - [{timestamp}] "GET /downloads/file-20mb.zip" 200 20971520'
     elif action_type == "download_100mb":
         log_line = f'{ip} - - [{timestamp}] "GET /downloads/file-100mb.zip" 200 104857600'
+    elif action_type == "cpu_spike":
+        cpu = action.get("cpu", 90)
+        latency = action.get("latency", 500)
+        log_line = f'{ip} - - [{timestamp}] "POST /api/checkout-process" 200 4096 [CPU:{cpu}%] [LATENCY:{latency}ms]'
     else:
         return {"error": f"Unknown action type: {action_type}"}
         
     # Send log line to Backend S3 synced log database
     try:
-        res = requests.post("http://127.0.0.1:8000/api/log", json={"log_line": log_line})
+        res = requests.post("http://127.0.0.1:8000/api/log", json={"log_line": log_line, "ip": ip})
         return res.json()
     except Exception as e:
         return {"status": "error", "message": f"Could not sync log to backend API: {str(e)}"}
+
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)

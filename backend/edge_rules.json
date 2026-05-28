@@ -1,42 +1,47 @@
 [
     {
-        "client_id": "client_a",
-        "url_path": "/login",
-        "hits": 65,
-        "recommended_ttl": 3600,
-        "caching_status": "Recommended",
-        "estimated_savings": 3.25
-    },
-    {
-        "client_id": "client_a",
         "url_path": "/checkout",
-        "hits": 26,
+        "hits": 25,
         "recommended_ttl": 3600,
         "caching_status": "Recommended",
-        "estimated_savings": 1.3
+        "avg_bytes": 0,
+        "mb_saved": 0.0,
+        "estimated_savings": 1.2
     },
     {
-        "client_id": "client_a",
+        "url_path": "/login",
+        "hits": 8,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "avg_bytes": 256,
+        "mb_saved": 0.0,
+        "estimated_savings": 0.35
+    },
+    {
         "url_path": "/index.html",
-        "hits": 11,
+        "hits": 7,
         "recommended_ttl": 3600,
         "caching_status": "Recommended",
-        "estimated_savings": 0.55
+        "avg_bytes": 5120,
+        "mb_saved": 0.03,
+        "estimated_savings": 0.3
     },
     {
-        "client_id": "client_a",
-        "url_path": "/large-dataset.zip",
-        "hits": 5,
+        "url_path": "/downloads/file-10mb.zip",
+        "hits": 4,
         "recommended_ttl": 3600,
         "caching_status": "Recommended",
-        "estimated_savings": 0.25
+        "avg_bytes": 10485760,
+        "mb_saved": 30.0,
+        "estimated_savings": 0.15
     },
     {
-        "client_id": "client_a",
-        "url_path": "/downloads/file-100mb.zip",
+        "url_path": "/api/checkout-process",
         "hits": 3,
         "recommended_ttl": 3600,
         "caching_status": "Recommended",
-        "estimated_savings": 0.15
+        "avg_bytes": 4096,
+        "mb_saved": 0.01,
+        "estimated_savings": 0.1
     }
 ]
