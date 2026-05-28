@@ -242,9 +242,16 @@
         <div class="subtitle">Simulate client traffic, attacks, and crashes to feed S3 logs</div>
 
         <div class="ip-input-group">
-            <label for="ipAddress">Client IP Address</label>
-            <input type="text" id="ipAddress" value="192.168.1.15" placeholder="e.g. 192.168.1.15">
+            <label for="ipAddress">Select Client IP Address (for Demo)</label>
+            <select id="ipAddress">
+                <option value="192.168.1.15">192.168.1.15 (Normal User - Local)</option>
+                <option value="10.0.0.45">10.0.0.45 (Suspected Attacker - VPN)</option>
+                <option value="172.16.0.8">172.16.0.8 (Remote API Node)</option>
+                <option value="198.51.100.22">198.51.100.22 (External Client)</option>
+                <option value="203.0.113.88">203.0.113.88 (Tor Exit Node)</option>
+            </select>
         </div>
+
 
         <div class="section-title">Log Actions</div>
         <div class="grid">
