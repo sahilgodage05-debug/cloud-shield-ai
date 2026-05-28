@@ -97,16 +97,42 @@ class LogAnalyzer:
         self.df = pd.DataFrame(self.data)
 
     def security_audit(self):   
-        """Flags IPs with more than 5 failed login attempts (HTTP 401)"""
+        """Flags IPs with 5 or more failed login attempts (HTTP 401) within a 5-second window"""
+        print("[!] Performing Security Audit for Brute Force (5-second window)...")
+        
+        if self.df.empty:
+            return pd.Series(dtype=int)
+            
+        # Parse timestamp strings into datetime objects for mathematical comparison
+        try:
+            self.df['DateTime'] = pd.to_datetime(self.df['Timestamp'], format='%d/%b/%Y:%H:%M:%S')
+        except Exception as e:
+            print(f"[ERROR] Date parsing failed: {e}")
+            return pd.Series(dtype=int)
+            
         # Filter for failed login attempts (status 401)
-        failed_logins = self.df[self.df['Status'] == 401]
+        failed_logins = self.df[self.df['Status'] == 401].sort_values('DateTime')
         
         if failed_logins.empty:
             return pd.Series(dtype=int)
             
-        ip_counts = failed_logins['IP'].value_counts()
-        suspected = ip_counts[ip_counts > 5]
-        return suspected
+        suspicious_ips = {}
+        
+        # Check time intervals for each IP address group
+        for ip, group in failed_logins.groupby('IP'):
+            times = group['DateTime'].tolist()
+            if len(times) < 5:
+                continue
+                
+            # If the difference between the 5th attempt and 1st attempt is <= 5 seconds, flag it
+            for i in range(4, len(times)):
+                time_diff = (times[i] - times[i-4]).total_seconds()
+                if time_diff <= 5:
+                    suspicious_ips[ip] = len(times)
+                    break
+                    
+        return pd.Series(suspicious_ips, dtype=int)
+
 
     def evaluate_self_healing(self):
         """Scans logs for consecutive 500 server crashes and triggers virtual EC2 auto-scaling"""
