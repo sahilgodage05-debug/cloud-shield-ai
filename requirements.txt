@@ -3,3 +3,6 @@ matplotlib
 boto3
 moto[s3,ec2]
 scikit-learn
+fastapi
+uvicorn
+jinja2
