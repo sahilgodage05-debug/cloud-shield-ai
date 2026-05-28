@@ -1,0 +1,42 @@
+[
+    {
+        "client_id": "client_a",
+        "url_path": "/login",
+        "hits": 65,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "estimated_savings": 3.25
+    },
+    {
+        "client_id": "client_a",
+        "url_path": "/checkout",
+        "hits": 20,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "estimated_savings": 1.0
+    },
+    {
+        "client_id": "client_a",
+        "url_path": "/large-dataset.zip",
+        "hits": 5,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "estimated_savings": 0.25
+    },
+    {
+        "client_id": "client_a",
+        "url_path": "/index.html",
+        "hits": 4,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "estimated_savings": 0.2
+    },
+    {
+        "client_id": "client_a",
+        "url_path": "/downloads/file-100mb.zip",
+        "hits": 3,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "estimated_savings": 0.15
+    }
+]

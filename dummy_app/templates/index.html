@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud-Shield App Simulator</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 6px;
+        }
+
+        .ip-input-group {
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background-color: #0f172a;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            padding: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-normal {
+            background-color: var(--primary);
+        }
+
+        .btn-normal:hover {
+            background-color: #2563eb;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-attack {
+            background-color: var(--warning);
+            color: #0f172a;
+        }
+
+        .btn-attack:hover {
+            background-color: #d97706;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-error {
+            background-color: var(--danger);
+        }
+
+        .btn-error:hover {
+            background-color: #dc2626;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-download {
+            background-color: var(--success);
+        }
+
+        .btn-download:hover {
+            background-color: #059669;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .console {
+            background-color: #090d16;
+            border: 1px solid #334155;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            min-height: 120px;
+            max-height: 200px;
+            overflow-y: auto;
+            color: #38bdf8;
+        }
+
+        .console-entry {
+            margin-bottom: 6px;
+            border-left: 3px solid var(--primary);
+            padding-left: 8px;
+        }
+
+        .console-entry.success {
+            border-left-color: var(--success);
+            color: var(--success);
+        }
+
+        .console-entry.error {
+            border-left-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .console-entry.warning {
+            border-left-color: var(--warning);
+            color: var(--warning);
+        }
+
+        /* CRASH OVERLAY ANIMATION */
+        .crash-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.98);
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .crash-title {
+            color: var(--danger);
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            animation: shake 0.5s infinite;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border-left-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin: 30px 0;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>App Simulator ⚡</h1>
+        <div class="subtitle">Simulate client traffic, attacks, and crashes to feed S3 logs</div>
+
+        <div class="ip-input-group">
+            <div>
+                <label for="ipAddress">Client IP Address</label>
+                <input type="text" id="ipAddress" value="192.168.1.15" placeholder="e.g. 192.168.1.15">
+            </div>
+            <div>
+                <label for="clientId">Target Client ID</label>
+                <select id="clientId">
+                    <option value="client_a">Client A (Company A)</option>
+                    <option value="client_b">Client B (Company B)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">Log Actions</div>
+        <div class="grid">
+            <button class="btn-normal" onclick="trigger('normal')">👤 Visit Page (200 OK)</button>
+            <button class="btn-attack" onclick="trigger('login_fail')">🔑 Failed Login (401)</button>
+            <button class="btn-error" onclick="trigger('error_500')">💥 Server Error (500)</button>
+            <button class="btn-download" style="background-color: #10b981;" onclick="trigger('download_10mb')">💾 Download 10MB (200)</button>
+            <button class="btn-download" style="background-color: #06b6d4;" onclick="trigger('download_20mb')">💾 Download 20MB (200)</button>
+            <button class="btn-error" style="background-color: #d946ef;" onclick="trigger('download_100mb')">🚨 Download 100MB (200)</button>
+        </div>
+
+        <div class="section-title">Log Console Stream</div>
+        <div class="console" id="console">
+            <div class="console-entry">[SYSTEM] Simulator Ready. Clicks will trigger POST requests to FastAPI server.</div>
+        </div>
+    </div>
+
+    <!-- CRASH MODAL OVERLAY -->
+    <div class="crash-overlay" id="crashOverlay">
+        <div class="crash-title">💥 500 INTERNAL SERVER ERROR</div>
+        <h2 style="font-size: 20px; color: var(--text-secondary); max-width: 500px; line-height: 1.5; font-weight: normal;">
+            Server crashed! Too many consecutive failures. Cloud-Shield AI Auto-Scaler triggered...
+        </h2>
+        <div class="spinner"></div>
+        <p style="color: var(--primary); font-weight: bold; font-family: monospace; font-size: 15px;">
+            Deploying new mock EC2 recovery server (2.5 seconds)...
+        </p>
+    </div>
+
+    <script>
+        let consecutive500s = 0;
+
+        function logToConsole(message, status = 'info') {
+            const consoleBox = document.getElementById('console');
+            const entry = document.createElement('div');
+            entry.className = `console-entry ${status}`;
+            
+            const time = new Date().toLocaleTimeString();
+            entry.innerText = `[${time}] ${message}`;
+            
+            consoleBox.appendChild(entry);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function trigger(actionType) {
+            const ip = document.getElementById('ipAddress').value.trim() || '192.168.1.15';
+            const clientId = document.getElementById('clientId').value;
+            
+            if (actionType === 'error_500') {
+                consecutive500s++;
+            } else {
+                consecutive500s = 0;
+            }
+
+            logToConsole(`Triggering '${actionType}' request from ${ip} for ${clientId}...`, 'info');
+            
+            fetch('/api/trigger', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: actionType,
+                    ip: ip,
+                    client_id: clientId
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    logToConsole(`SUCCESS: Log registered for ${clientId} and synced to S3.`, 'success');
+                    
+                    // If server crashes >= 5 times, trigger the recovery overlay
+                    if (consecutive500s >= 5) {
+                        triggerCrashSequence();
+                    }
+                } else if (data.status === 'error') {
+                    logToConsole(`ERROR: ${data.message}`, 'error');
+                } else {
+                    logToConsole(`RESPONSE: ${JSON.stringify(data)}`, 'warning');
+                }
+            })
+            .catch(err => {
+                logToConsole(`CONNECTION ERROR: Make sure backend FastAPI is running.`, 'error');
+            });
+        }
+
+        function triggerCrashSequence() {
+            const overlay = document.getElementById('crashOverlay');
+            overlay.style.display = 'flex';
+            consecutive500s = 0; // reset local count
+            
+            // Auto-heal after 2.5 seconds by deploying new server and sending a 200 OK request
+            setTimeout(() => {
+                const ip = document.getElementById('ipAddress').value.trim() || '192.168.1.15';
+                const clientId = document.getElementById('clientId').value;
+                fetch('/api/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'normal', ip: ip, client_id: clientId })
+                })
+                .then(res => res.json())
+                .then(() => {
+                    overlay.style.display = 'none';
+                    logToConsole(`[HEALED] Cloud-Shield AI EC2 Auto-Scaler active. Traffic successfully restored!`, 'success');
+                })
+                .catch(() => {
+                    overlay.style.display = 'none';
+                });
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
