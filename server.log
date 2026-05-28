@@ -1,0 +1,31 @@
+# --- Case 1: Normal User  ---
+192.168.1.10 - - [06/Mar/2024:10:01:05] "GET /index.html" 200
+192.168.1.10 - - [06/Mar/2024:10:01:45] "GET /about-us" 200
+192.168.1.10 - - [06/Mar/2024:10:02:30] "GET /contact" 200
+
+# --- Case 2: Brute Force Attack (Hacker detected!) ---
+# IP address try to login frequently in one second 
+10.0.0.45 - - [06/Mar/2024:10:05:01] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:02] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:03] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:04] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:05] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:06] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:07] "POST /login" 401
+10.0.0.45 - - [06/Mar/2024:10:05:08] "POST /login" 401
+
+# --- Case 3: Dead Links (404 Errors) ---
+# Users wants pages which didnt exist
+172.16.0.5 - - [06/Mar/2024:10:10:15] "GET /old-page.php" 404
+172.16.0.8 - - [06/Mar/2024:10:11:20] "GET /wrong-url" 404
+192.168.1.12 - - [06/Mar/2024:10:12:05] "GET /test-link" 404
+
+# --- Case 4: Server Crash/Critical Errors (500 Errors) ---
+112.45.67.8 - - [06/Mar/2024:10:15:45] "GET /checkout" 500
+112.45.67.8 - - [06/Mar/2024:10:16:10] "GET /payment-gateway" 500
+
+# --- Case 5: Random Traffic ---
+192.168.1.10 - - [06/Mar/2024:10:20:00] "GET /index.html" 200
+103.45.12.1 - - [06/Mar/2024:10:21:30] "GET /blog/post-1" 200
+103.45.12.1 - - [06/Mar/2024:10:22:15] "GET /blog/post-2" 200
+
