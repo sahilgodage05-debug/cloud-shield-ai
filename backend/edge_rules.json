@@ -1,39 +1,39 @@
 [
     {
-        "url_path": "/checkout",
-        "hits": 25,
-        "recommended_ttl": 3600,
-        "caching_status": "Recommended",
-        "avg_bytes": 0,
-        "mb_saved": 0.0,
-        "estimated_savings": 1.2
-    },
-    {
         "url_path": "/login",
-        "hits": 8,
+        "hits": 6,
         "recommended_ttl": 3600,
         "caching_status": "Recommended",
         "avg_bytes": 256,
         "mb_saved": 0.0,
-        "estimated_savings": 0.35
+        "estimated_savings": 0.25
+    },
+    {
+        "url_path": "/checkout",
+        "hits": 5,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "avg_bytes": 0,
+        "mb_saved": 0.0,
+        "estimated_savings": 0.2
     },
     {
         "url_path": "/index.html",
-        "hits": 7,
-        "recommended_ttl": 3600,
-        "caching_status": "Recommended",
-        "avg_bytes": 5120,
-        "mb_saved": 0.03,
-        "estimated_savings": 0.3
-    },
-    {
-        "url_path": "/downloads/file-10mb.zip",
         "hits": 4,
         "recommended_ttl": 3600,
         "caching_status": "Recommended",
-        "avg_bytes": 10485760,
-        "mb_saved": 30.0,
+        "avg_bytes": 5120,
+        "mb_saved": 0.01,
         "estimated_savings": 0.15
+    },
+    {
+        "url_path": "/downloads/file-100mb.zip",
+        "hits": 4,
+        "recommended_ttl": 3600,
+        "caching_status": "Recommended",
+        "avg_bytes": 104857600,
+        "mb_saved": 300.0,
+        "estimated_savings": 0.17
     },
     {
         "url_path": "/api/checkout-process",
